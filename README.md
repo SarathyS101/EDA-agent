@@ -1,4 +1,4 @@
-# Agentic EDA - AI-Powered Data Analysis Platform
+# Agentic EDA - AI-Powered Data Analysis Platform (Currently in Local Testing)
 
 As an undergraduate researcher, I know how time-consuming it can be to manually explore datasets and extract meaningful insights. Agentic EDA automates this process: upload your CSV, pay just $1, and receive a comprehensive, AI-generated PDF report. Instantly gain clear, actionable interpretations of your data and accelerate your research like never before.
 
