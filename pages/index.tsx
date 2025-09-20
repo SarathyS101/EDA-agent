@@ -1,0 +1,280 @@
+import { useState, useRef } from 'react'
+import { useRouter } from 'next/router'
+import { useSupabaseClient } from '@supabase/auth-helpers-react'
+import { Upload, FileText, BarChart3, Sparkles, CheckCircle, ArrowRight } from 'lucide-react'
+import axios from 'axios'
+import { useAuth } from '@/contexts/AuthContext'
+
+export default function Home() {
+  const [file, setFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [dragActive, setDragActive] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
+  const { user } = useAuth()
+  const supabase = useSupabaseClient()
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true)
+    } else if (e.type === "dragleave") {
+      setDragActive(false)
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(false)
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const droppedFile = e.dataTransfer.files[0]
+      if (droppedFile.type === 'text/csv' || droppedFile.name.endsWith('.csv')) {
+        setFile(droppedFile)
+      } else {
+        alert('Please upload a CSV file only')
+      }
+    }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const selectedFile = e.target.files[0]
+      if (selectedFile.type === 'text/csv' || selectedFile.name.endsWith('.csv')) {
+        setFile(selectedFile)
+      } else {
+        alert('Please upload a CSV file only')
+      }
+    }
+  }
+
+  const handleUpload = async () => {
+    if (!file || !user) {
+      if (!user) {
+        alert('Please sign in first using the Demo Sign In button')
+      }
+      return
+    }
+
+    setUploading(true)
+    
+    try {
+      // Step 1: Upload the file
+      const formData = new FormData()
+      formData.append('csv', file)
+      formData.append('userId', user.id)
+
+      const uploadResponse = await axios.post('/api/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+
+      if (uploadResponse.data.analysisId) {
+        const analysisId = uploadResponse.data.analysisId
+        
+        // Step 2: Skip payment and directly start analysis for local testing
+        try {
+          const analyzeResponse = await axios.post('/api/analyze', {
+            analysisId: analysisId,
+            userId: user.id,
+            skipPayment: true // Add flag for local testing
+          })
+          alert('Analysis started! Redirecting to dashboard to monitor progress.')
+          router.push('/dashboard')
+        } catch (analyzeError) {
+          console.error('Analysis start failed:', analyzeError)
+          // Fallback to payment if analysis direct start fails
+          router.push(`/payment?analysisId=${analysisId}`)
+        }
+      }
+    } catch (error) {
+      console.error('Upload failed:', error)
+      alert('Upload failed. Please try again.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const signInWithGoogle = async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({ 
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}`
+      }
+    })
+    
+    if (error) {
+      alert('Sign-in failed. Please try again.')
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* Header */}
+      <nav className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <BarChart3 className="h-8 w-8 text-blue-600" />
+              <span className="ml-2 text-xl font-bold text-gray-900">Agentic EDA</span>
+            </div>
+            <div className="flex items-center space-x-4">
+              {user ? (
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm text-gray-700">Hello, {user?.email}</span>
+                  <button
+                    onClick={() => router.push('/dashboard')}
+                    className="btn-primary"
+                  >
+                    Dashboard
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={signInWithGoogle}
+                  className="btn-primary"
+                >
+                  Sign In with Google
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="text-center mb-16">
+          <h1 className="text-5xl font-bold text-gray-900 mb-6">
+            AI-Powered Data Analysis
+          </h1>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            Upload your CSV file and get a comprehensive Exploratory Data Analysis report 
+            generated by our agentic AI system. Just $1 per analysis.
+          </p>
+        </div>
+
+        {/* Features Grid */}
+        <div className="grid md:grid-cols-3 gap-8 mb-16">
+          <div className="card text-center">
+            <Sparkles className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Agentic AI Analysis</h3>
+            <p className="text-gray-600">
+              Our AI validates its own work, ensuring accurate and comprehensive analysis
+            </p>
+          </div>
+          <div className="card text-center">
+            <FileText className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Professional PDF Report</h3>
+            <p className="text-gray-600">
+              Get a detailed PDF with insights, visualizations, and recommendations
+            </p>
+          </div>
+          <div className="card text-center">
+            <CheckCircle className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Secure & Fast</h3>
+            <p className="text-gray-600">
+              Your data is processed securely and results delivered within minutes
+            </p>
+          </div>
+        </div>
+
+        {/* Upload Section */}
+        <div className="max-w-2xl mx-auto">
+          <div className="card">
+            <h2 className="text-2xl font-bold text-center mb-6">Upload Your CSV File</h2>
+            
+            <div
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                dragActive 
+                  ? 'border-blue-500 bg-blue-50' 
+                  : 'border-gray-300 hover:border-blue-400'
+              }`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+            >
+              <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              {file ? (
+                <div>
+                  <p className="text-lg font-medium text-gray-700">{file.name}</p>
+                  <p className="text-sm text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-lg text-gray-600 mb-2">
+                    Drag and drop your CSV file here, or click to select
+                  </p>
+                  <p className="text-sm text-gray-500">Maximum file size: 10MB</p>
+                </div>
+              )}
+              
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="mt-4 btn-secondary"
+              >
+                Select CSV File
+              </button>
+            </div>
+
+            {file && (
+              <div className="mt-6 text-center">
+                <div className="flex items-center justify-center mb-4">
+                  <span className="text-2xl font-bold text-green-600">FREE</span>
+                  <span className="text-gray-600 ml-2">for local testing</span>
+                </div>
+                
+                <button
+                  onClick={handleUpload}
+                  disabled={uploading || !user}
+                  className="btn-primary inline-flex items-center px-8 py-3 text-lg"
+                >
+                  {uploading ? (
+                    'Starting Analysis...'
+                  ) : !user ? (
+                    'Sign In to Continue'
+                  ) : (
+                    <>
+                      Start Analysis
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Process Steps */}
+        <div className="mt-16 max-w-4xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-12">How It Works</h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              { step: '1', title: 'Upload CSV', desc: 'Upload your dataset securely' },
+              { step: '2', title: 'AI Analysis', desc: 'Agentic AI analyzes your data' },
+              { step: '3', title: 'Get Report', desc: 'Download professional PDF report' }
+            ].map((item) => (
+              <div key={item.step} className="text-center">
+                <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-4">
+                  {item.step}
+                </div>
+                <h3 className="font-semibold mb-2">{item.title}</h3>
+                <p className="text-sm text-gray-600">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

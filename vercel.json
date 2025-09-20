@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "pages/api/upload.ts": {
+      "maxDuration": 30
+    },
+    "pages/api/analyze.ts": {
+      "maxDuration": 300
+    }
+  },
+  "env": {
+    "PYTHON_VERSION": "3.9"
+  }
+}
