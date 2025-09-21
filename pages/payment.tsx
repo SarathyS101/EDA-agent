@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
-import { loadStripe } from '@stripe/stripe-js'
+// PRODUCTION: Uncomment the line below for Stripe integration
+// import { loadStripe } from '@stripe/stripe-js'
 import { CreditCard, ArrowLeft, Shield, Zap } from 'lucide-react'
 import axios from 'axios'
 import { useAuth } from '@/contexts/AuthContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import toast from 'react-hot-toast'
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
+// PRODUCTION: Uncomment the line below for Stripe integration
+// const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
 function PaymentContent() {
   const [loading, setLoading] = useState(false)
@@ -33,9 +35,28 @@ function PaymentContent() {
         analysisId: analysisId
       })
 
+      // LOCAL TESTING: Skip Stripe checkout and go directly to dashboard
+      if (response.data.localTesting) {
+        console.log('🧪 LOCAL TESTING: Skipping Stripe, going directly to analysis')
+        toast.success('Local testing mode - analysis starting immediately!')
+        
+        // Start the analysis immediately for local testing
+        await axios.post('/api/analyze', {
+          analysisId: analysisId,
+          userId: user.id,
+          skipPayment: true
+        })
+        
+        router.push(`/dashboard?analysis=${analysisId}&localTesting=true`)
+        return
+      }
+
+      /* PRODUCTION: Uncomment the section below for Stripe integration
       if (response.data.url) {
         window.location.href = response.data.url
       }
+      */
+      
     } catch (error) {
       console.error('Payment setup failed:', error)
       toast.error('Payment setup failed. Please try again.')
@@ -105,7 +126,22 @@ function PaymentContent() {
             </div>
           </div>
 
-          {/* Security Notice */}
+          {/* Local Testing Notice */}
+          <div className="bg-green-50 rounded-lg p-4 mb-6">
+            <div className="flex items-start">
+              <Shield className="h-5 w-5 text-green-600 mt-0.5 mr-3" />
+              <div className="text-sm">
+                <p className="font-medium text-green-800 mb-1">🧪 Local Testing Mode</p>
+                <p className="text-green-700">
+                  Payment processing is disabled for local development. Click below to start 
+                  the TRULY AGENTIC analysis immediately with no charge.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* PRODUCTION: Uncomment the section below for Stripe security notice */}
+          {/* 
           <div className="bg-blue-50 rounded-lg p-4 mb-6">
             <div className="flex items-start">
               <Shield className="h-5 w-5 text-blue-600 mt-0.5 mr-3" />
@@ -118,8 +154,29 @@ function PaymentContent() {
               </div>
             </div>
           </div>
+          */}
 
-          {/* Payment Button */}
+          {/* Payment Button (Local Testing) */}
+          <button
+            onClick={handlePayment}
+            disabled={loading || !analysisId}
+            className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-6 rounded-lg transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                Starting agentic analysis...
+              </>
+            ) : (
+              <>
+                <Zap className="h-5 w-5 mr-3" />
+                🤖 Start Agentic Analysis (Local Testing)
+              </>
+            )}
+          </button>
+
+          {/* PRODUCTION: Uncomment the section below for Stripe payment button */}
+          {/*
           <button
             onClick={handlePayment}
             disabled={loading || !analysisId}
@@ -137,6 +194,7 @@ function PaymentContent() {
               </>
             )}
           </button>
+          */}
 
           <p className="text-xs text-gray-500 text-center mt-4">
             By proceeding, you agree to our Terms of Service and Privacy Policy. 

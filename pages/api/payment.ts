@@ -1,7 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import { createCheckoutSession, verifyWebhookSignature } from '@/lib/stripe'
+// PRODUCTION: Uncomment the line below for Stripe integration
+// import { createCheckoutSession, verifyWebhookSignature } from '@/lib/stripe'
 import { supabaseAdmin } from '@/lib/supabase'
-import { buffer } from 'micro'
+// PRODUCTION: Uncomment the line below for webhook verification
+// import { buffer } from 'micro'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
@@ -19,6 +21,28 @@ async function handleCheckout(req: NextApiRequest, res: NextApiResponse) {
       return res.status(400).json({ message: 'Missing required fields' })
     }
 
+    // LOCAL TESTING: Skip Stripe and mark as paid immediately
+    console.log('🧪 LOCAL TESTING: Skipping Stripe payment, marking as paid')
+    
+    // Update analysis record directly to paid for local testing
+    await supabaseAdmin
+      .from('analyses')
+      .update({ 
+        analysis_status: 'paid',
+        payment_intent_id: `local_test_${analysisId}` // Mock payment ID for testing
+      })
+      .eq('id', analysisId)
+      .eq('user_id', userId)
+
+    // Return mock session data for local testing
+    res.status(200).json({ 
+      sessionId: `local_test_session_${analysisId}`, 
+      url: `/dashboard?analysis=${analysisId}&paid=true`,
+      localTesting: true 
+    })
+
+    /* PRODUCTION: Uncomment the section below for Stripe integration
+    
     // Create Stripe checkout session
     const session = await createCheckoutSession('price_eda_analysis', userId)
 
@@ -33,6 +57,8 @@ async function handleCheckout(req: NextApiRequest, res: NextApiResponse) {
       .eq('user_id', userId)
 
     res.status(200).json({ sessionId: session.id, url: session.url })
+    
+    */
 
   } catch (error) {
     console.error('Checkout error:', error)

@@ -46,9 +46,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .update({ analysis_status: 'processing' })
       .eq('id', analysisId)
 
-    // Trigger Python analysis script
-    const pythonScriptPath = path.join(process.cwd(), 'runner', 'agent.py')
+    // Trigger the new TRULY AGENTIC Python analysis script
+    const pythonScriptPath = path.join(process.cwd(), 'runner', 'truly_agentic_agent.py')
     const pythonProcess = spawn('python3', [pythonScriptPath, analysis.csv_url, analysisId, userId])
+    
+    console.log(`🤖 Starting TRULY AGENTIC analysis for ${analysisId}`)
+    console.log('Features enabled: autonomous planning, real-time adaptation, self-monitoring, webhooks')
 
     pythonProcess.stdout.on('data', (data) => {
       // Python output handled internally

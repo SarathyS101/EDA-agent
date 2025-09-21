@@ -204,10 +204,10 @@ class PdfGenerator:
         story.append(Spacer(1, 0.3 * inch))
         
         # Summary statistics for numeric columns
-        if 'summary_stats' in results and 'numeric' in results['summary_stats']:
+        if 'basic_statistics' in results and 'summary_statistics' in results['basic_statistics']:
             story.append(Paragraph("Numeric Variables Summary", self.heading_style))
             
-            numeric_stats = results['summary_stats']['numeric']
+            numeric_stats = results['basic_statistics']['summary_statistics']
             if numeric_stats:
                 # Create summary table for first few numeric columns
                 cols = list(numeric_stats.keys())[:5]  # Limit to 5 columns
@@ -238,19 +238,19 @@ class PdfGenerator:
                 story.append(table)
         
         # Correlation analysis
-        if 'correlations' in results and 'strong_correlations' in results['correlations']:
+        if 'correlation_analysis' in results and 'strong_correlations' in results['correlation_analysis']:
             story.append(Spacer(1, 0.3 * inch))
             story.append(Paragraph("Strong Correlations", self.heading_style))
             
-            strong_corrs = results['correlations']['strong_correlations']
+            strong_corrs = results['correlation_analysis']['strong_correlations']
             if strong_corrs:
                 for corr in strong_corrs[:10]:  # Top 10 correlations
                     story.append(Paragraph(
-                        f"• {corr['var1']} ↔ {corr['var2']}: {corr['correlation']:.3f}",
+                        f"• {corr['column1']} ↔ {corr['column2']}: {corr['correlation']:.3f}",
                         self.normal_style
                     ))
             else:
-                story.append(Paragraph("No strong correlations found (threshold: 0.7)", self.normal_style))
+                story.append(Paragraph("No strong correlations found (threshold: 0.5)", self.normal_style))
         
         return story
     
@@ -262,13 +262,14 @@ class PdfGenerator:
         story.append(Spacer(1, 0.3 * inch))
         
         # Missing values analysis
-        if 'missing_values' in results:
+        if 'basic_statistics' in results and 'missing_data' in results['basic_statistics']:
             story.append(Paragraph("Missing Values", self.heading_style))
             
             missing_data = []
-            for col, count in results['missing_values']['count'].items():
+            missing_info = results['basic_statistics']['missing_data']
+            for col, count in missing_info['counts'].items():
                 if count > 0:
-                    pct = results['missing_values']['percentage'][col]
+                    pct = missing_info['percentages'][col]
                     missing_data.append([col, f"{count:,}", f"{pct:.1f}%"])
             
             if missing_data:
@@ -289,12 +290,12 @@ class PdfGenerator:
                 story.append(Paragraph("No missing values detected.", self.normal_style))
         
         # Outliers
-        if 'outliers' in results:
+        if 'distribution_analysis' in results and 'outliers' in results['distribution_analysis']:
             story.append(Spacer(1, 0.2 * inch))
             story.append(Paragraph("Outlier Detection", self.heading_style))
             
             outlier_summary = []
-            for col, outlier_info in results['outliers'].items():
+            for col, outlier_info in results['distribution_analysis']['outliers'].items():
                 if outlier_info['count'] > 0:
                     outlier_summary.append(f"• {col}: {outlier_info['count']} outliers ({outlier_info['percentage']:.1f}%)")
             

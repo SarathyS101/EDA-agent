@@ -1,18 +1,35 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import { verifyWebhookSignature } from '@/lib/stripe'
+// PRODUCTION: Uncomment the line below for Stripe webhook verification
+// import { verifyWebhookSignature } from '@/lib/stripe'
 import { supabaseAdmin } from '@/lib/supabase'
-import { buffer } from 'micro'
+// PRODUCTION: Uncomment the line below for Stripe webhook verification
+// import { buffer } from 'micro'
 
+// PRODUCTION: Uncomment the config below for Stripe webhooks
+/*
 export const config = {
   api: {
     bodyParser: false,
   },
 }
+*/
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' })
   }
+
+  // LOCAL TESTING: Skip Stripe webhook verification
+  console.log('🧪 LOCAL TESTING: Stripe webhooks disabled for local development')
+  
+  // For local testing, just acknowledge the webhook
+  res.status(200).json({ 
+    received: true, 
+    localTesting: true,
+    message: 'Stripe webhooks disabled for local testing' 
+  })
+
+  /* PRODUCTION: Uncomment the section below for Stripe webhook handling
 
   try {
     const buf = await buffer(req)
@@ -62,4 +79,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('Webhook error:', error)
     res.status(400).json({ message: 'Webhook error' })
   }
+
+  */
 }
