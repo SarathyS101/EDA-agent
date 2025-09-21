@@ -4,6 +4,7 @@ import { useSupabaseClient } from '@supabase/auth-helpers-react'
 import { Upload, FileText, BarChart3, Sparkles, CheckCircle, ArrowRight } from 'lucide-react'
 import axios from 'axios'
 import { useAuth } from '@/contexts/AuthContext'
+import toast from 'react-hot-toast'
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null)
@@ -34,7 +35,7 @@ export default function Home() {
       if (droppedFile.type === 'text/csv' || droppedFile.name.endsWith('.csv')) {
         setFile(droppedFile)
       } else {
-        alert('Please upload a CSV file only')
+        toast.error('Please upload a CSV file only')
       }
     }
   }
@@ -45,7 +46,7 @@ export default function Home() {
       if (selectedFile.type === 'text/csv' || selectedFile.name.endsWith('.csv')) {
         setFile(selectedFile)
       } else {
-        alert('Please upload a CSV file only')
+        toast.error('Please upload a CSV file only')
       }
     }
   }
@@ -53,7 +54,7 @@ export default function Home() {
   const handleUpload = async () => {
     if (!file || !user) {
       if (!user) {
-        alert('Please sign in first using the Demo Sign In button')
+        toast.error('Please sign in first using the Demo Sign In button')
       }
       return
     }
@@ -73,24 +74,12 @@ export default function Home() {
       if (uploadResponse.data.analysisId) {
         const analysisId = uploadResponse.data.analysisId
         
-        // Step 2: Skip payment and directly start analysis for local testing
-        try {
-          const analyzeResponse = await axios.post('/api/analyze', {
-            analysisId: analysisId,
-            userId: user.id,
-            skipPayment: true // Add flag for local testing
-          })
-          alert('Analysis started! Redirecting to dashboard to monitor progress.')
-          router.push('/dashboard')
-        } catch (analyzeError) {
-          console.error('Analysis start failed:', analyzeError)
-          // Fallback to payment if analysis direct start fails
-          router.push(`/payment?analysisId=${analysisId}`)
-        }
+        // Step 2: Redirect to payment
+        router.push(`/payment?analysisId=${analysisId}`)
       }
     } catch (error) {
       console.error('Upload failed:', error)
-      alert('Upload failed. Please try again.')
+      toast.error('Upload failed. Please try again.')
     } finally {
       setUploading(false)
     }
@@ -105,7 +94,7 @@ export default function Home() {
     })
     
     if (error) {
-      alert('Sign-in failed. Please try again.')
+      toast.error('Sign-in failed. Please try again.')
     }
   }
 
@@ -230,8 +219,8 @@ export default function Home() {
             {file && (
               <div className="mt-6 text-center">
                 <div className="flex items-center justify-center mb-4">
-                  <span className="text-2xl font-bold text-green-600">FREE</span>
-                  <span className="text-gray-600 ml-2">for local testing</span>
+                  <span className="text-2xl font-bold text-blue-600">$1.00</span>
+                  <span className="text-gray-600 ml-2">AI-powered analysis</span>
                 </div>
                 
                 <button

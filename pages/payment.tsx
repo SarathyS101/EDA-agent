@@ -5,6 +5,7 @@ import { CreditCard, ArrowLeft, Shield, Zap } from 'lucide-react'
 import axios from 'axios'
 import { useAuth } from '@/contexts/AuthContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
+import toast from 'react-hot-toast'
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
@@ -37,7 +38,7 @@ function PaymentContent() {
       }
     } catch (error) {
       console.error('Payment setup failed:', error)
-      alert('Payment setup failed. Please try again.')
+      toast.error('Payment setup failed. Please try again.')
     } finally {
       setLoading(false)
     }

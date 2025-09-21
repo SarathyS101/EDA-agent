@@ -87,6 +87,11 @@ class EdaValidator:
         """
         Generate additional insights and recommendations using LLM
         """
+        # Check if OpenAI API key is available
+        if not os.environ.get('OPENAI_API_KEY'):
+            logger.warning("OPENAI_API_KEY not found. Generating rule-based insights instead.")
+            return self._generate_rule_based_insights(df, validated_results)
+        
         try:
             data_summary = self._prepare_data_summary(df)
             
@@ -135,14 +140,9 @@ class EdaValidator:
             
         except Exception as e:
             logger.error(f"Insight enhancement failed: {str(e)}")
-            # Add basic insights if LLM fails
-            validated_results.update({
-                'insights': ['Analysis completed but detailed insights could not be generated'],
-                'recommendations': ['Review the statistical summaries and visualizations'],
-                'data_quality_notes': ['Manual review recommended'],
-                'next_steps': ['Consider additional data collection or cleaning']
-            })
-            return validated_results
+            # Fallback to rule-based insights
+            logger.info("Falling back to rule-based insights generation")
+            return self._generate_rule_based_insights(df, validated_results)
     
     def _prepare_data_summary(self, df: pd.DataFrame) -> Dict[str, Any]:
         """Prepare a concise data summary for the LLM"""
@@ -202,3 +202,100 @@ class EdaValidator:
                 changes['missing_values'] = 'Missing value analysis corrected'
         
         return changes if changes else {'status': 'No changes needed'}
+    
+    def _generate_rule_based_insights(self, df: pd.DataFrame, validated_results: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate insights using rule-based logic when LLM is not available"""
+        try:
+            insights = []
+            recommendations = []
+            data_quality_notes = []
+            next_steps = []
+            
+            # Dataset size insights
+            total_records = len(df)
+            total_columns = len(df.columns)
+            insights.append(f"Dataset contains {total_records:,} records across {total_columns} variables")
+            
+            # Missing data insights
+            if 'missing_values' in validated_results:
+                total_missing = sum(validated_results['missing_values']['count'].values())
+                missing_pct = (total_missing / (total_records * total_columns)) * 100
+                if missing_pct > 10:
+                    insights.append(f"High missing data rate ({missing_pct:.1f}%) may impact analysis reliability")
+                    recommendations.append("Consider data imputation or collection strategies for missing values")
+                elif missing_pct > 0:
+                    insights.append(f"Dataset has {missing_pct:.1f}% missing values - manageable but worth addressing")
+                else:
+                    insights.append("Dataset is complete with no missing values")
+            
+            # Data types insights
+            numeric_cols = len(df.select_dtypes(include=['number']).columns)
+            categorical_cols = len(df.select_dtypes(include=['object']).columns)
+            if numeric_cols > categorical_cols:
+                insights.append(f"Dataset is numeric-heavy ({numeric_cols} numeric vs {categorical_cols} categorical variables)")
+                recommendations.append("Focus on statistical analysis and numerical relationships")
+            else:
+                insights.append(f"Dataset has substantial categorical data ({categorical_cols} categorical vs {numeric_cols} numeric variables)")
+                recommendations.append("Consider category analysis and encoding strategies")
+            
+            # Correlation insights
+            if 'correlations' in validated_results and 'strong_correlations' in validated_results['correlations']:
+                strong_corrs = len(validated_results['correlations']['strong_correlations'])
+                if strong_corrs > 0:
+                    insights.append(f"Found {strong_corrs} strong correlations that may indicate important relationships")
+                    recommendations.append("Investigate strong correlations for potential feature engineering or business insights")
+                else:
+                    insights.append("No strong correlations detected - variables appear relatively independent")
+            
+            # Outlier insights
+            if 'outliers' in validated_results:
+                total_outliers = sum(outlier_info.get('count', 0) for outlier_info in validated_results['outliers'].values())
+                if total_outliers > 0:
+                    outlier_pct = (total_outliers / total_records) * 100
+                    if outlier_pct > 5:
+                        insights.append(f"High outlier rate ({outlier_pct:.1f}%) detected across variables")
+                        data_quality_notes.append("Review outliers for data quality issues or genuine extreme values")
+                    else:
+                        insights.append(f"Moderate outlier presence ({outlier_pct:.1f}%) - typical for most datasets")
+                        data_quality_notes.append("Outliers detected but within normal range")
+                
+            # Data quality assessment
+            if missing_pct < 5 and total_outliers / total_records < 0.05:
+                data_quality_notes.append("Overall data quality appears good with minimal issues")
+            else:
+                data_quality_notes.append("Data quality issues identified that may require attention")
+            
+            # Next steps based on dataset characteristics
+            if numeric_cols > 0:
+                next_steps.append("Perform statistical modeling or predictive analysis")
+            if categorical_cols > 0:
+                next_steps.append("Conduct categorical analysis and segmentation studies")
+            if strong_corrs > 0:
+                next_steps.append("Investigate causal relationships behind strong correlations")
+            if total_missing > 0:
+                next_steps.append("Address missing data through imputation or additional collection")
+            
+            next_steps.append("Create targeted visualizations for key findings")
+            next_steps.append("Validate insights with domain experts")
+            
+            # Update results
+            validated_results.update({
+                'insights': insights,
+                'recommendations': recommendations,
+                'data_quality_notes': data_quality_notes,
+                'next_steps': next_steps
+            })
+            
+            logger.info("Rule-based insights generated successfully")
+            return validated_results
+            
+        except Exception as e:
+            logger.error(f"Rule-based insight generation failed: {str(e)}")
+            # Final fallback to minimal insights
+            validated_results.update({
+                'insights': [f'Dataset analyzed: {len(df)} rows, {len(df.columns)} columns'],
+                'recommendations': ['Manual review of statistical summaries recommended'],
+                'data_quality_notes': ['Data quality assessment completed'],
+                'next_steps': ['Review analysis results and plan next steps']
+            })
+            return validated_results
